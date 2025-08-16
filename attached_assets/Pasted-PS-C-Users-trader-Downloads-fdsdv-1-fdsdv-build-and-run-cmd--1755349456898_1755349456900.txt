@@ -1,0 +1,90 @@
+PS C:\Users\trader\Downloads\fdsdv (1)\fdsdv> .\build-and-run.cmd
+====================================
+   IQR Control - ╪ز╪ش┘à┘è╪╣ ┘ê╪ز╪┤╪║┘è┘
+====================================
+╪ش╪د╪▒┘è ╪ز╪ش┘à┘è╪╣ ╪د┘┘à╪┤╪▒┘ê╪╣...
+
+> rest-express@1.0.0 build
+> vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+
+vite v5.4.19 building for production...
+transforming (8) src\pages\not-found.tsxBrowserslist: browsers data (caniuse-lite) is 10 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+✓ 1837 modules transformed.
+../dist/public/index.html                   2.20 kB │ gzip:   0.86 kB
+../dist/public/assets/index-BMaFrnly.css   64.13 kB │ gzip:  11.46 kB
+../dist/public/assets/index-CAIE10dC.js   538.87 kB │ gzip: 159.24 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks       
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 10.02s
+
+  dist\index.js  45.1kb
+
+Done in 19ms
+ظ£à ╪ز┘à ╪ز╪ش┘à┘è╪╣ ╪د┘┘à╪┤╪▒┘ê╪╣ ╪ذ┘╪ش╪د╪ص
+╪ش╪د╪▒┘è ╪ز╪┤╪║┘è┘ ╪د┘╪«╪د╪»┘à...
+Dashboard: http://localhost:5000
+Login: admin / admin123
+====================================
+✅ Database connected successfully
+[dotenv@17.2.1] injecting env (0) from .env -- tip: 📡 version env with Radar: https://dotenvx.com/radar
+✅ Using PostgreSQL session store
+✅ IQR Control server running on http://0.0.0.0:5000
+👤 Login: admin / admin123
+💾 Database: Connected to Neon PostgreSQL
+4:03:19 PM [express] serving on port 5000
+4:03:43 PM [express] GET /api/auth/user 401 in 5ms :: {"message":"Unauthorized"}
+Login error: error: relation "users" does not exist
+    at file:///C:/Users/trader/Downloads/fdsdv%20(1)/fdsdv/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonPreparedQuery.execute (file:///C:/Users/trader/Downloads/fdsdv%20(1)/fdsdv/node_modules/drizzle-orm/neon-serverless/session.js:76:20)
+    at async DatabaseStorage.getUserByUsername (file:///C:/Users/trader/Downloads/fdsdv%20(1)/fdsdv/dist/index.js:205:20)
+    at async file:///C:/Users/trader/Downloads/fdsdv%20(1)/fdsdv/dist/index.js:690:20 {
+  length: 105,
+  severity: 'ERROR',
+  code: '42P01',
+  detail: undefined,
+  hint: undefined,
+  position: '153',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '1449',
+  routine: 'parserOpenTable'
+}
+4:03:49 PM [express] POST /api/auth/login 500 in 1236ms :: {"message":"حدث خطأ أثناء تسجيل الدخول"}
+Login error: error: relation "users" does not exist
+    at file:///C:/Users/trader/Downloads/fdsdv%20(1)/fdsdv/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NeonPreparedQuery.execute (file:///C:/Users/trader/Downloads/fdsdv%20(1)/fdsdv/node_modules/drizzle-orm/neon-serverless/session.js:76:20)
+    at async DatabaseStorage.getUserByUsername (file:///C:/Users/trader/Downloads/fdsdv%20(1)/fdsdv/dist/index.js:205:20)
+    at async file:///C:/Users/trader/Downloads/fdsdv%20(1)/fdsdv/dist/index.js:690:20 {
+  length: 105,
+  severity: 'ERROR',
+  code: '42P01',
+  detail: undefined,
+  hint: undefined,
+  position: '153',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '1449',
+  routine: 'parserOpenTable'
+}
+4:03:55 PM [express] POST /api/auth/login 500 in 573ms :: {"message":"حدث خطأ أثناء تسجيل الدخول"}
