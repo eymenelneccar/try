@@ -13,6 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { generatePDFReport } from "@/lib/pdf-generator";
 
 export default function Reports() {
   const [selectedReportType, setSelectedReportType] = useState("");
@@ -97,12 +98,22 @@ export default function Reports() {
     mutationFn: async (data: any) => {
       return await apiRequest("POST", "/api/reports/generate", data);
     },
-    onSuccess: (response) => {
-      toast({
-        title: "تم إنشاء التقرير",
-        description: "تم إنشاء التقرير بنجاح ويمكن تحميله الآن",
-      });
-      // In a real implementation, you would handle the actual PDF download here
+    onSuccess: (response: any) => {
+      if (response.success && response.data) {
+        // Generate and download PDF
+        generatePDFReport(response.data);
+        
+        toast({
+          title: "تم إنشاء التقرير",
+          description: "تم إنشاء وتحميل التقرير بصيغة PDF بنجاح",
+        });
+      } else {
+        toast({
+          title: "خطأ",
+          description: "فشل في معالجة بيانات التقرير",
+          variant: "destructive",
+        });
+      }
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
@@ -143,19 +154,44 @@ export default function Reports() {
   };
 
   const reportTypes = [
-    { value: "financial", label: "التقرير المالي", description: "الإيرادات والمصروفات" },
-    { value: "customers", label: "تقرير العملاء", description: "حالة الاشتراكات" },
-    { value: "employees", label: "تقرير الموظفين", description: "الرواتب والتكاليف" },
-    { value: "prints", label: "تقرير المطبوعات", description: "إيرادات المطبوعات" },
-    { value: "comprehensive", label: "التقرير الشامل", description: "جميع البيانات" },
+    { 
+      value: "financial", 
+      label: "التقرير المالي", 
+      description: "تحليل شامل للإيرادات والمصروفات مع حسابات الأرباح والخسائر",
+      details: "يشمل: تفاصيل الدخل، المصروفات، صافي الربح، رسوم الاشتراكات"
+    },
+    { 
+      value: "customers", 
+      label: "تقرير العملاء", 
+      description: "تحليل مفصل لحالة العملاء والاشتراكات",
+      details: "يشمل: قائمة العملاء، حالة الاشتراكات، الاشتراكات المنتهية والمنتهية قريباً"
+    },
+    { 
+      value: "employees", 
+      label: "تقرير الموظفين", 
+      description: "تفاصيل الموظفين والرواتب والتكاليف الإدارية",
+      details: "يشمل: قائمة الموظفين، المناصب، الرواتب، إجمالي التكاليف"
+    },
+    { 
+      value: "prints", 
+      label: "تقرير المطبوعات", 
+      description: "تحليل مفصل لإيرادات المطبوعات والخدمات الإضافية",
+      details: "يشمل: دخل المطبوعات، تفاصيل العمليات، الإحصائيات الشهرية"
+    },
+    { 
+      value: "comprehensive", 
+      label: "التقرير الشامل والمفصل", 
+      description: "تقرير كامل ومفصل يشمل جميع جوانب العمل والأداء",
+      details: "يشمل: كل ما سبق + إحصائيات شاملة ومقارنات وتحليلات تفصيلية"
+    },
   ];
 
   // Calculate summary data
-  const totalIncome = incomeData?.reduce((sum: number, entry: any) => sum + Number(entry.amount), 0) || 0;
-  const totalExpenses = expenseData?.reduce((sum: number, entry: any) => sum + Number(entry.amount), 0) || 0;
+  const totalIncome = Array.isArray(incomeData) ? incomeData.reduce((sum: number, entry: any) => sum + Number(entry.amount), 0) : 0;
+  const totalExpenses = Array.isArray(expenseData) ? expenseData.reduce((sum: number, entry: any) => sum + Number(entry.amount), 0) : 0;
   const netProfit = totalIncome - totalExpenses;
-  const printIncome = incomeData?.filter((entry: any) => entry.type === 'prints')
-    .reduce((sum: number, entry: any) => sum + Number(entry.amount), 0) || 0;
+  const printIncome = Array.isArray(incomeData) ? incomeData.filter((entry: any) => entry.type === 'prints')
+    .reduce((sum: number, entry: any) => sum + Number(entry.amount), 0) : 0;
 
   return (
     <div className="min-h-screen gradient-bg">
@@ -252,9 +288,10 @@ export default function Reports() {
                       <SelectContent>
                         {reportTypes.map((type) => (
                           <SelectItem key={type.value} value={type.value}>
-                            <div>
-                              <div className="font-medium">{type.label}</div>
-                              <div className="text-sm text-gray-400">{type.description}</div>
+                            <div className="py-2">
+                              <div className="font-medium text-base">{type.label}</div>
+                              <div className="text-sm text-gray-400 mb-1">{type.description}</div>
+                              <div className="text-xs text-gray-500">{type.details}</div>
                             </div>
                           </SelectItem>
                         ))}
@@ -352,7 +389,7 @@ export default function Reports() {
               <div>
                 <p className="text-gray-300 text-sm" data-testid="text-total-customers">إجمالي العملاء</p>
                 <p className="text-2xl font-bold text-purple-400" data-testid="text-customers-count">
-                  {customers?.length || 0}
+                  {Array.isArray(customers) ? customers.length : 0}
                 </p>
               </div>
               <div className="w-12 h-12 gradient-purple rounded-full flex items-center justify-center">
@@ -366,7 +403,7 @@ export default function Reports() {
               <div>
                 <p className="text-gray-300 text-sm" data-testid="text-total-employees">إجمالي الموظفين</p>
                 <p className="text-2xl font-bold text-cyan-400" data-testid="text-employees-count">
-                  {employees?.length || 0}
+                  {Array.isArray(employees) ? employees.length : 0}
                 </p>
               </div>
               <div className="w-12 h-12 gradient-cyan rounded-full flex items-center justify-center">

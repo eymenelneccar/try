@@ -420,18 +420,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { startDate, endDate, reportType } = req.body;
       
-      // This is a simplified PDF generation - in production you'd use proper PDF libraries
-      const reportData = {
+      // Get data based on report type
+      let reportData: any = {
         period: `${startDate} إلى ${endDate}`,
         type: reportType,
         generatedAt: new Date().toISOString(),
-        // Add actual data based on report type
+        generatedBy: "IQR Control System",
       };
+
+      // Fetch data based on report type
+      if (reportType === "financial" || reportType === "comprehensive") {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        
+        reportData.income = await storage.getIncomeEntries(start, end);
+        reportData.expenses = await storage.getExpenseEntries(start, end);
+        
+        // Calculate totals
+        reportData.totalIncome = reportData.income.reduce((sum: number, entry: any) => sum + Number(entry.amount), 0);
+        reportData.totalExpenses = reportData.expenses.reduce((sum: number, entry: any) => sum + Number(entry.amount), 0);
+        reportData.netProfit = reportData.totalIncome - reportData.totalExpenses;
+      }
+
+      if (reportType === "customers" || reportType === "comprehensive") {
+        reportData.customers = await storage.getCustomers();
+        reportData.totalCustomers = reportData.customers.length;
+        
+        // Customer analytics
+        reportData.expiredCustomers = reportData.customers.filter((c: any) => new Date(c.expiryDate) < new Date());
+        reportData.activeCustomers = reportData.customers.filter((c: any) => c.isActive && new Date(c.expiryDate) >= new Date());
+        reportData.expiringSoon = reportData.customers.filter((c: any) => {
+          const expiry = new Date(c.expiryDate);
+          const today = new Date();
+          const diffTime = expiry.getTime() - today.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          return diffDays <= 30 && diffDays > 0;
+        });
+      }
+
+      if (reportType === "employees" || reportType === "comprehensive") {
+        reportData.employees = await storage.getEmployees();
+        reportData.totalEmployees = reportData.employees.length;
+        reportData.totalSalaries = reportData.employees.reduce((sum: number, emp: any) => sum + Number(emp.salary || 0), 0);
+      }
+
+      if (reportType === "prints" || reportType === "comprehensive") {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const allIncome = await storage.getIncomeEntries(start, end);
+        
+        reportData.printIncome = allIncome.filter((entry: any) => entry.type === 'prints');
+        reportData.totalPrintIncome = reportData.printIncome.reduce((sum: number, entry: any) => sum + Number(entry.amount), 0);
+      }
+
+      // Add summary statistics
+      const dashboardStats = await storage.getDashboardStats();
+      reportData.summary = dashboardStats;
 
       res.json({
         message: "تم إنشاء التقرير بنجاح",
-        downloadUrl: "/api/reports/download/sample.pdf",
-        data: reportData
+        data: reportData,
+        success: true
       });
     } catch (error) {
       console.error("Error generating report:", error);
