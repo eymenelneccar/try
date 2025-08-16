@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "wouter";
-import { ArrowRight, Plus, RotateCcw, ExternalLink, Calendar, AlertTriangle } from "lucide-react";
+import { ArrowRight, Plus, RotateCcw, ExternalLink, Calendar, AlertTriangle, Edit, Trash2 } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,8 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 
 export default function Customers() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<any | null>(null);
   const [renewingCustomerId, setRenewingCustomerId] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -30,6 +32,16 @@ export default function Customers() {
       name: "",
       menuUrl: "",
       joinDate: new Date().toISOString().split('T')[0],
+      subscriptionType: "annual",
+    },
+  });
+
+  const editForm = useForm({
+    resolver: zodResolver(insertCustomerSchema),
+    defaultValues: {
+      name: "",
+      menuUrl: "",
+      joinDate: "",
       subscriptionType: "annual",
     },
   });
@@ -115,8 +127,96 @@ export default function Customers() {
     },
   });
 
+  const updateCustomerMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      return await apiRequest("PUT", `/api/customers/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      setIsEditDialogOpen(false);
+      setEditingCustomer(null);
+      editForm.reset();
+      toast({
+        title: "تم التحديث",
+        description: "تم تحديث بيانات العميل بنجاح",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "غير مصرح",
+          description: "جاري إعادة تسجيل الدخول...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "خطأ",
+        description: "فشل في تحديث العميل",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteCustomerMutation = useMutation({
+    mutationFn: async (customerId: string) => {
+      return await apiRequest("DELETE", `/api/customers/${customerId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({
+        title: "تم الحذف",
+        description: "تم حذف العميل بنجاح",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "غير مصرح",
+          description: "جاري إعادة تسجيل الدخول...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "خطأ",
+        description: "فشل في حذف العميل",
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmit = (data: any) => {
     addCustomerMutation.mutate(data);
+  };
+
+  const onEditSubmit = (data: any) => {
+    if (editingCustomer) {
+      updateCustomerMutation.mutate({ id: editingCustomer.id, data });
+    }
+  };
+
+  const handleEditCustomer = (customer: any) => {
+    setEditingCustomer(customer);
+    editForm.reset({
+      name: customer.name,
+      menuUrl: customer.menuUrl || "",
+      joinDate: customer.joinDate,
+      subscriptionType: customer.subscriptionType,
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleDeleteCustomer = (customerId: string) => {
+    deleteCustomerMutation.mutate(customerId);
   };
 
   const handleRenewSubscription = (customerId: string) => {
@@ -263,6 +363,108 @@ export default function Customers() {
           </Dialog>
         </div>
 
+        {/* Edit Customer Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-md glass-card border-white/20">
+            <DialogHeader>
+              <DialogTitle data-testid="text-edit-dialog-title">تعديل العميل</DialogTitle>
+            </DialogHeader>
+            
+            <Form {...editForm}>
+              <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+                <FormField
+                  control={editForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>اسم العميل</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="أدخل اسم العميل" 
+                          className="glass-card border-white/20 focus:border-purple-400"
+                          data-testid="input-edit-customer-name"
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="menuUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>رابط المنيو</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="https://example.com/menu" 
+                          className="glass-card border-white/20 focus:border-purple-400"
+                          data-testid="input-edit-menu-url"
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="joinDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>تاريخ الانضمام</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="date" 
+                          className="glass-card border-white/20 focus:border-purple-400"
+                          data-testid="input-edit-join-date"
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="subscriptionType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>نوع الاشتراك</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="glass-card border-white/20" data-testid="select-edit-subscription-type">
+                            <SelectValue placeholder="اختر نوع الاشتراك" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="annual">سنوي</SelectItem>
+                          <SelectItem value="semi-annual">نصف سنوي</SelectItem>
+                          <SelectItem value="quarterly">ربع سنوي</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <Button 
+                  type="submit" 
+                  className="w-full gradient-purple hover:scale-105 transition-transform"
+                  disabled={updateCustomerMutation.isPending}
+                  data-testid="button-submit-edit-customer"
+                >
+                  {updateCustomerMutation.isPending ? "جاري الحفظ..." : "تحديث العميل"}
+                </Button>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
         {/* Customer List */}
         <GlassCard className="p-6">
           <h2 className="text-xl font-semibold mb-6" data-testid="text-customer-list-title">قائمة العملاء</h2>
@@ -272,7 +474,7 @@ export default function Customers() {
               <div className="animate-spin w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4"></div>
               <p className="text-gray-400">جاري تحميل العملاء...</p>
             </div>
-          ) : customers?.length ? (
+          ) : Array.isArray(customers) && customers.length ? (
             <div className="grid gap-4">
               {customers.map((customer: any, index: number) => (
                 <GlassCard 
@@ -311,6 +513,46 @@ export default function Customers() {
                     </div>
                     
                     <div className="flex space-x-3 space-x-reverse">
+                      <Button
+                        onClick={() => handleEditCustomer(customer)}
+                        variant="outline"
+                        className="border-blue-400 text-blue-400 hover:bg-blue-400/10"
+                        data-testid={`button-edit-${index}`}
+                      >
+                        <Edit className="w-4 h-4 ml-1" />
+                        تعديل
+                      </Button>
+
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="border-red-400 text-red-400 hover:bg-red-400/10"
+                            data-testid={`button-delete-${index}`}
+                          >
+                            <Trash2 className="w-4 h-4 ml-1" />
+                            حذف
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="glass-card border-white/20">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              هل أنت متأكد من أنك تريد حذف العميل "{customer.name}"؟ هذا الإجراء لا يمكن التراجع عنه.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter className="flex-row-reverse">
+                            <AlertDialogAction 
+                              onClick={() => handleDeleteCustomer(customer.id)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              تأكيد الحذف
+                            </AlertDialogAction>
+                            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                      
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button

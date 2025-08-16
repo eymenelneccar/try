@@ -146,6 +146,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update customer
+  app.put('/api/customers/:id', isAuthenticated, async (req, res) => {
+    try {
+      const validatedData = insertCustomerSchema.parse(req.body);
+      const customer = await storage.updateCustomer(req.params.id, validatedData);
+      
+      if (!customer) {
+        return res.status(404).json({ message: "العميل غير موجود" });
+      }
+
+      // Log activity
+      await storage.createActivity({
+        type: 'customer_updated',
+        description: `تم تعديل بيانات العميل: ${customer.name}`,
+        relatedId: customer.id,
+      });
+
+      res.json(customer);
+    } catch (error) {
+      console.error("Error updating customer:", error);
+      res.status(400).json({ message: "فشل في تعديل العميل" });
+    }
+  });
+
+  // Delete customer
+  app.delete('/api/customers/:id', isAuthenticated, async (req, res) => {
+    try {
+      const customer = await storage.getCustomer(req.params.id);
+      if (!customer) {
+        return res.status(404).json({ message: "العميل غير موجود" });
+      }
+
+      await storage.deleteCustomer(req.params.id);
+      
+      // Log activity
+      await storage.createActivity({
+        type: 'customer_deleted',
+        description: `تم حذف العميل: ${customer.name}`,
+        relatedId: customer.id,
+      });
+
+      res.json({ message: "تم حذف العميل بنجاح" });
+    } catch (error) {
+      console.error("Error deleting customer:", error);
+      res.status(500).json({ message: "فشل في حذف العميل" });
+    }
+  });
+
   app.get('/api/customers/expiring/:days', isAuthenticated, async (req, res) => {
     try {
       const days = parseInt(req.params.days);
