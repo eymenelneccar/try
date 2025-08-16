@@ -130,7 +130,10 @@ export default function Employees() {
   };
 
   const handleDeleteEmployee = (employeeId: string) => {
-    if (confirm("هل أنت متأكد من حذف هذا الموظف؟")) {
+    // Using a custom confirmation dialog with Arabic text
+    const confirmDelete = window.confirm("⚠️ هل أنت متأكد من حذف هذا الموظف؟\n\nهذا الإجراء لا يمكن التراجع عنه وستفقد جميع بيانات الموظف.");
+    
+    if (confirmDelete) {
       deleteEmployeeMutation.mutate(employeeId);
     }
   };
@@ -274,7 +277,7 @@ export default function Employees() {
               <div>
                 <p className="text-gray-300 text-sm" data-testid="text-current-inventory">المخزون الحالي</p>
                 <p className="text-2xl font-bold text-green-400" data-testid="text-inventory-amount">
-                  {stats ? `${stats.currentInventory} د.ع` : "..."}
+                  {stats?.currentInventory ? `${stats.currentInventory} د.ع` : "0 د.ع"}
                 </p>
               </div>
               <div className="w-12 h-12 gradient-green rounded-full flex items-center justify-center">
@@ -288,7 +291,7 @@ export default function Employees() {
               <div>
                 <p className="text-gray-300 text-sm" data-testid="text-total-salaries">مجموع الرواتب</p>
                 <p className="text-2xl font-bold" data-testid="text-salaries-amount">
-                  {stats ? `${stats.totalSalaries} د.ع` : "..."}
+                  {stats?.totalSalaries ? `${stats.totalSalaries} د.ع` : "0 د.ع"}
                 </p>
               </div>
               <div className="w-12 h-12 gradient-blue rounded-full flex items-center justify-center">
@@ -307,7 +310,7 @@ export default function Employees() {
                     className={`text-lg font-bold ${getFinancialStatusColor(stats?.financialStatus || 'healthy')}`}
                     data-testid="text-status-indicator"
                   >
-                    {stats ? getFinancialStatusText(stats.financialStatus) : "..."}
+                    {stats?.financialStatus ? getFinancialStatusText(stats.financialStatus) : "غير محدد"}
                   </p>
                 </div>
               </div>
@@ -327,7 +330,7 @@ export default function Employees() {
               <div className="animate-spin w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full mx-auto mb-4"></div>
               <p className="text-gray-400">جاري تحميل الموظفين...</p>
             </div>
-          ) : employees?.length ? (
+          ) : Array.isArray(employees) && employees.length > 0 ? (
             <div className="grid gap-4">
               {employees.map((employee: any, index: number) => (
                 <GlassCard 
@@ -367,10 +370,14 @@ export default function Employees() {
                         disabled={deleteEmployeeMutation.isPending}
                         variant="outline"
                         size="sm"
-                        className="border-red-400 text-red-400 hover:bg-red-400/10"
+                        className="border-red-400 text-red-400 hover:bg-red-400/10 disabled:opacity-50"
                         data-testid={`button-delete-employee-${index}`}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        {deleteEmployeeMutation.isPending ? (
+                          <div className="w-4 h-4 animate-spin border-2 border-red-400 border-t-transparent rounded-full" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
                       </Button>
                     </div>
                   </div>
