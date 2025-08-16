@@ -135,6 +135,76 @@ export default function Reports() {
     },
   });
 
+  const addSampleDataMutation = useMutation({
+    mutationFn: async () => {
+      // Add sample expense entries
+      await apiRequest("POST", "/api/expenses", {
+        amount: "50000",
+        reason: "إيجار المكتب",
+        description: "إيجار شهر نوفمبر",
+        date: new Date().toISOString().split('T')[0]
+      });
+      
+      await apiRequest("POST", "/api/expenses", {
+        amount: "25000",
+        reason: "فواتير الكهرباء",
+        description: "فاتورة الكهرباء لهذا الشهر",
+        date: new Date().toISOString().split('T')[0]
+      });
+
+      // Add sample print income entry
+      await apiRequest("POST", "/api/income", {
+        type: "prints",
+        printType: "business_cards",
+        amount: "15000",
+        description: "طباعة كروت شخصية للعميل أحمد",
+        date: new Date().toISOString().split('T')[0]
+      });
+
+      await apiRequest("POST", "/api/income", {
+        type: "prints", 
+        printType: "flyers",
+        amount: "12000",
+        description: "طباعة منشورات إعلانية",
+        date: new Date().toISOString().split('T')[0]
+      });
+
+      return { success: true };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/income"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      
+      toast({
+        title: "تم إضافة البيانات",
+        description: "تم إضافة بيانات تجريبية للمصروفات والمطبوعات بنجاح",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "غير مصرح",
+          description: "جاري إعادة تسجيل الدخول...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "خطأ",
+        description: "فشل في إضافة البيانات التجريبية",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const addSampleData = () => {
+    addSampleDataMutation.mutate();
+  };
+
   const onSubmit = (data: any) => {
     if (!data.startDate || !data.endDate || !data.reportType) {
       toast({
@@ -215,7 +285,17 @@ export default function Reports() {
 
         {/* Report Generation Form */}
         <GlassCard className="p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-6" data-testid="text-generate-report-title">إنشاء تقرير جديد</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold" data-testid="text-generate-report-title">إنشاء تقرير جديد</h2>
+            <Button 
+              onClick={addSampleData}
+              variant="outline" 
+              className="border-gray-400 text-gray-400 hover:bg-gray-400/10"
+              disabled={addSampleDataMutation.isPending}
+            >
+              إضافة بيانات تجريبية للاختبار
+            </Button>
+          </div>
           
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -322,6 +402,21 @@ export default function Reports() {
               ملخص البيانات للفترة ({dateRange.startDate} - {dateRange.endDate})
             </h3>
             
+            {/* Data Status */}
+            <div className="text-sm text-gray-400 mb-4 p-3 bg-gray-800/20 rounded-lg">
+              <div className="mb-2">حالة البيانات المتاحة:</div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                <div>الدخل: {Array.isArray(incomeData) ? `${incomeData.length} إدخال` : 'لا يوجد'}</div>
+                <div>المصروفات: {Array.isArray(expenseData) ? `${expenseData.length} إدخال` : 'لا يوجد'}</div>
+                <div>العملاء: {Array.isArray(customers) ? `${customers.length} عميل` : 'لا يوجد'}</div>
+              </div>
+              {(!Array.isArray(expenseData) || expenseData.length === 0) && (
+                <div className="mt-2 text-amber-400 text-sm">
+                  💡 استخدم زر "إضافة بيانات تجريبية" أعلاه لإضافة بيانات للاختبار
+                </div>
+              )}
+            </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <GlassCard className="p-4">
                 <div className="flex items-center justify-between">
@@ -344,6 +439,9 @@ export default function Reports() {
                     <p className="text-xl font-bold text-red-400" data-testid="text-expenses-amount">
                       {totalExpenses} د.ع
                     </p>
+                    {!Array.isArray(expenseData) || expenseData.length === 0 ? (
+                      <p className="text-xs text-amber-400 mt-1">لا توجد مصروفات مسجلة</p>
+                    ) : null}
                   </div>
                   <div className="w-10 h-10 gradient-red rounded-full flex items-center justify-center">
                     <FileText className="w-5 h-5" />
@@ -372,6 +470,9 @@ export default function Reports() {
                     <p className="text-xl font-bold text-orange-400" data-testid="text-print-amount">
                       {printIncome} د.ع
                     </p>
+                    {!Array.isArray(incomeData) || incomeData.filter(i => i?.type === 'prints').length === 0 ? (
+                      <p className="text-xs text-amber-400 mt-1">لا توجد مطبوعات مسجلة</p>
+                    ) : null}
                   </div>
                   <div className="w-10 h-10 gradient-orange rounded-full flex items-center justify-center">
                     <Printer className="w-5 h-5" />
