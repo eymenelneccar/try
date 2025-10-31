@@ -346,10 +346,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/income', isAuthenticated, upload.single('receipt'), async (req, res) => {
     try {
+      // Clean empty strings and convert to null for optional fields
+      const cleanData: any = {};
+      Object.keys(req.body).forEach(key => {
+        const value = req.body[key];
+        // Convert empty strings to null, keep other values
+        cleanData[key] = (value === '' || value === 'null' || value === 'undefined') ? null : value;
+      });
+      
       // Convert string values to proper types from FormData
       const processedBody = {
-        ...req.body,
-        isDeposit: req.body.isDeposit === 'true' || req.body.isDeposit === true,
+        ...cleanData,
+        customerId: cleanData.customerId || null,
+        printType: cleanData.printType || null,
+        description: cleanData.description || null,
+        totalAmount: cleanData.totalAmount || null,
+        isDeposit: cleanData.isDeposit === 'true' || cleanData.isDeposit === true,
         receiptUrl: req.file ? `/uploads/${req.file.filename}` : null
       };
       
@@ -411,11 +423,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/income/:id', isAuthenticated, upload.single('receipt'), async (req, res) => {
     try {
+      // Clean empty strings and convert to null for optional fields
+      const cleanData: any = {};
+      Object.keys(req.body).forEach(key => {
+        const value = req.body[key];
+        // Convert empty strings to null, keep other values
+        cleanData[key] = (value === '' || value === 'null' || value === 'undefined') ? null : value;
+      });
+      
       // Convert string values to proper types from FormData
       const processedBody = {
-        ...req.body,
-        isDeposit: req.body.isDeposit === 'true' || req.body.isDeposit === true,
-        receiptUrl: req.file ? `/uploads/${req.file.filename}` : req.body.receiptUrl
+        ...cleanData,
+        customerId: cleanData.customerId || null,
+        printType: cleanData.printType || null,
+        description: cleanData.description || null,
+        totalAmount: cleanData.totalAmount || null,
+        isDeposit: cleanData.isDeposit === 'true' || cleanData.isDeposit === true,
+        receiptUrl: req.file ? `/uploads/${req.file.filename}` : cleanData.receiptUrl
       };
       
       const validatedData = insertIncomeEntrySchema.parse(processedBody);
@@ -490,7 +514,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/expenses', isAuthenticated, async (req, res) => {
     try {
-      const validatedData = insertExpenseEntrySchema.parse(req.body);
+      // Clean empty strings and convert to null for optional fields
+      const cleanData: any = {};
+      Object.keys(req.body).forEach(key => {
+        const value = req.body[key];
+        cleanData[key] = (value === '' || value === 'null' || value === 'undefined') ? null : value;
+      });
+      
+      const validatedData = insertExpenseEntrySchema.parse(cleanData);
       const expenseEntry = await storage.createExpenseEntry(validatedData);
       
       // Log activity

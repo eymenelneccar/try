@@ -1,0 +1,52 @@
+index-9Eg5WVWM.js:203 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+api/auth/user:1  Failed to load resource: the server responded with a status of 401 ()
+api/income:1  Failed to load resource: the server responded with a status of 500 ()
+index-9Eg5WVWM.js:502 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-9Eg5WVWM.js:502
+api/income:1  Failed to load resource: the server responded with a status of 400 ()
+index-9Eg5WVWM.js:502 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-9Eg5WVWM.js:502
+api/expenses:1  Failed to load resource: the server responded with a status of 400 ()
+api/income:1  Failed to load resource: the server responded with a status of 500 ()
+api/income:1  Failed to load resource: the server responded with a status of 500 ()
+index-9Eg5WVWM.js:502 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-9Eg5WVWM.js:502
+Ad @ index-9Eg5WVWM.js:161
+_B @ index-9Eg5WVWM.js:174
+CB @ index-9Eg5WVWM.js:174
+DB @ index-9Eg5WVWM.js:174
+jB @ index-9Eg5WVWM.js:174
+uU @ index-9Eg5WVWM.js:174
+Nu @ index-9Eg5WVWM.js:174
+lU @ index-9Eg5WVWM.js:174
+Zf @ index-9Eg5WVWM.js:174
+c4 @ index-9Eg5WVWM.js:174
+wd @ index-9Eg5WVWM.js:91
+(anonymous) @ index-9Eg5WVWM.js:174
+index-9Eg5WVWM.js:508  POST https://try-5-9zjo.onrender.com/api/income 400 (Bad Request)
+mutationFn @ index-9Eg5WVWM.js:508
+fn @ index-9Eg5WVWM.js:212
+T @ index-9Eg5WVWM.js:212
+start @ index-9Eg5WVWM.js:212
+execute @ index-9Eg5WVWM.js:212
+await in execute
+mutate @ index-9Eg5WVWM.js:212
+(anonymous) @ index-9Eg5WVWM.js:233
+Z @ index-9Eg5WVWM.js:508
+(anonymous) @ index-9Eg5WVWM.js:502
+await in (anonymous)
+or @ index-9Eg5WVWM.js:78
+i0 @ index-9Eg5WVWM.js:78
+kp @ index-9Eg5WVWM.js:78
+nc @ index-9Eg5WVWM.js:78
+OE @ index-9Eg5WVWM.js:90
+$M @ index-9Eg5WVWM.js:90
+VE @ index-9Eg5WVWM.js:90
+WM @ index-9Eg5WVWM.js:90
+(anonymous) @ index-9Eg5WVWM.js:90
+T5 @ index-9Eg5WVWM.js:174
+n0 @ index-9Eg5WVWM.js:78
+gx @ index-9Eg5WVWM.js:90
+xV @ index-9Eg5WVWM.js:78
+rx @ index-9Eg5WVWM.js:78
+bV @ index-9Eg5WVWM.js:78
