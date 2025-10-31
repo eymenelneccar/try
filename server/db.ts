@@ -2,15 +2,14 @@ import dotenv from "dotenv";
 // Load environment variables first
 dotenv.config();
 
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
+import pg from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { eq } from 'drizzle-orm';
-import ws from "ws";
 import * as schema from "@shared/schema";
 
-neonConfig.webSocketConstructor = ws;
+const { Pool } = pg;
 
-let pool: Pool | null = null;
+let pool: pg.Pool | null = null;
 let db: any = null;
 
 async function createSessionTable() {
@@ -176,8 +175,17 @@ async function initializeDatabase() {
     return;
   }
   
-  pool = new Pool({ connectionString: cleanDatabaseUrl });
-  db = drizzle({ client: pool, schema });
+  pool = new Pool({ 
+    connectionString: cleanDatabaseUrl,
+    ssl: process.env.NODE_ENV === 'production' 
+      ? { rejectUnauthorized: false }
+      : false,
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000,
+  });
+  
+  db = drizzle(pool, { schema });
   console.log("✅ Database connected successfully");
   
   // إنشاء جميع الجداول
