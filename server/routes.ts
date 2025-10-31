@@ -222,10 +222,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/income', isAuthenticated, upload.single('receipt'), async (req, res) => {
     try {
-      const validatedData = insertIncomeEntrySchema.parse({
+      // Convert string values to proper types from FormData
+      const processedBody = {
         ...req.body,
+        isDeposit: req.body.isDeposit === 'true' || req.body.isDeposit === true,
         receiptUrl: req.file ? `/uploads/${req.file.filename}` : null
-      });
+      };
+      
+      const validatedData = insertIncomeEntrySchema.parse(processedBody);
       
       // Validate deposit: totalAmount is REQUIRED if isDeposit
       if (validatedData.isDeposit) {
@@ -283,10 +287,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/income/:id', isAuthenticated, upload.single('receipt'), async (req, res) => {
     try {
-      const validatedData = insertIncomeEntrySchema.parse({
+      // Convert string values to proper types from FormData
+      const processedBody = {
         ...req.body,
+        isDeposit: req.body.isDeposit === 'true' || req.body.isDeposit === true,
         receiptUrl: req.file ? `/uploads/${req.file.filename}` : req.body.receiptUrl
-      });
+      };
+      
+      const validatedData = insertIncomeEntrySchema.parse(processedBody);
       
       const incomeEntry = await storage.updateIncomeEntry(req.params.id, validatedData);
       
