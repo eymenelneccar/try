@@ -129,7 +129,8 @@ export default function Receivables() {
   };
 
   const getCustomerName = (customerId: string) => {
-    const customer = customers?.find((c: any) => c.id === customerId);
+    if (!customers || !Array.isArray(customers)) return "غير محدد";
+    const customer = customers.find((c: any) => c.id === customerId);
     return customer?.name || "غير محدد";
   };
 
@@ -259,7 +260,7 @@ export default function Receivables() {
               <div className="animate-spin w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full mx-auto mb-4"></div>
               <p className="text-gray-400">جاري تحميل المستحقات...</p>
             </div>
-          ) : receivables?.length ? (
+          ) : receivables && Array.isArray(receivables) && receivables.length > 0 ? (
             <div className="grid gap-4">
               {receivables.map((receivable: any, index: number) => {
                 const statusInfo = getStatusInfo(receivable.status);

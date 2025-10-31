@@ -457,7 +457,7 @@ export class DatabaseStorage implements IStorage {
     const monthlyIncomeResult = await db
       .select({ total: sql<number>`cast(coalesce(sum(cast(amount as decimal)), 0) as decimal)` })
       .from(incomeEntries)
-      .where(sql`${incomeEntries.createdAt} >= ${startOfMonth} AND ${incomeEntries.createdAt} <= ${endOfMonth}`);
+      .where(sql`${incomeEntries.createdAt} >= ${startOfMonth}::timestamp AND ${incomeEntries.createdAt} < (${endOfMonth}::timestamp + interval '1 day')`);
     const monthlyIncome = Number(monthlyIncomeResult[0]?.total || 0);
 
     // Expired subscriptions
