@@ -10,8 +10,21 @@ import {
   insertIncomeEntrySchema,
   insertExpenseEntrySchema,
   insertEmployeeSchema,
-  insertManualUserSchema
+  insertManualUserSchema,
+  insertFeedbackSchema
 } from "@shared/schema";
+
+// Admin middleware
+const isAdmin = async (req: any, res: any, next: any) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({ message: "غير مصرح - يتطلب صلاحيات مدير" });
+    }
+    next();
+  } catch (error) {
+    res.status(403).json({ message: "غير مصرح" });
+  }
+};
 
 
 
@@ -79,6 +92,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
       res.status(500).json({ message: "فشل في جلب إحصائيات لوحة التحكم" });
+    }
+  });
+
+  // User management routes (admin only)
+  app.get('/api/users', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      const safeUsers = users.map(({ password, ...user }) => user);
+      res.json(safeUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "فشل في جلب المستخدمين" });
+    }
+  });
+
+  app.post('/api/users', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const validatedData = insertManualUserSchema.parse(req.body);
+      const hashedPassword = await hashPassword(validatedData.password);
+      const user = await storage.createManualUser({
+        ...validatedData,
+        password: hashedPassword,
+      });
+      const { password: _, ...safeUser } = user;
+      res.status(201).json(safeUser);
+    } catch (error: any) {
+      console.error("Error creating user:", error);
+      if (error.code === '23505') {
+        res.status(400).json({ message: "اسم المستخدم موجود بالفعل" });
+      } else {
+        res.status(400).json({ message: "فشل في إنشاء المستخدم" });
+      }
+    }
+  });
+
+  app.put('/api/users/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { password, ...otherData } = req.body;
+      const updateData: any = { ...otherData };
+      
+      if (password && password.trim() !== '') {
+        updateData.password = await hashPassword(password);
+      }
+      
+      const user = await storage.updateManualUser(req.params.id, updateData);
+      const { password: _, ...safeUser } = user;
+      res.json(safeUser);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(400).json({ message: "فشل في تحديث المستخدم" });
+    }
+  });
+
+  app.delete('/api/users/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      await storage.deleteManualUser(req.params.id);
+      res.json({ message: "تم حذف المستخدم بنجاح" });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ message: "فشل في حذف المستخدم" });
+    }
+  });
+
+  // Feedback routes
+  app.get('/api/feedback', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const feedbackList = await storage.getAllFeedback();
+      res.json(feedbackList);
+    } catch (error) {
+      console.error("Error fetching feedback:", error);
+      res.status(500).json({ message: "فشل في جلب الشكاوى والاقتراحات" });
+    }
+  });
+
+  app.get('/api/feedback/my', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const userFeedback = await storage.getUserFeedback(userId);
+      res.json(userFeedback);
+    } catch (error) {
+      console.error("Error fetching user feedback:", error);
+      res.status(500).json({ message: "فشل في جلب ملاحظاتك" });
+    }
+  });
+
+  app.post('/api/feedback', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const validatedData = insertFeedbackSchema.parse({
+        ...req.body,
+        userId,
+      });
+      const newFeedback = await storage.createFeedback(validatedData);
+      res.status(201).json(newFeedback);
+    } catch (error) {
+      console.error("Error creating feedback:", error);
+      res.status(400).json({ message: "فشل في إرسال الملاحظة" });
+    }
+  });
+
+  app.put('/api/feedback/:id/status', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { status } = req.body;
+      if (!status || !['pending', 'reviewed', 'resolved'].includes(status)) {
+        return res.status(400).json({ message: "حالة غير صحيحة" });
+      }
+      const updatedFeedback = await storage.updateFeedbackStatus(req.params.id, status);
+      res.json(updatedFeedback);
+    } catch (error) {
+      console.error("Error updating feedback status:", error);
+      res.status(500).json({ message: "فشل في تحديث حالة الملاحظة" });
     }
   });
 

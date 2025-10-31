@@ -15,6 +15,8 @@ import Employees from "@/pages/employees";
 import Reports from "@/pages/reports";
 import UserManagement from "@/pages/user-management";
 import Receivables from "@/pages/receivables";
+import Users from "@/pages/users";
+import Feedback from "@/pages/feedback";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -34,6 +36,8 @@ function Router() {
           <Route path="/reports" component={Reports} />
           <Route path="/user-management" component={UserManagement} />
           <Route path="/receivables" component={Receivables} />
+          <Route path="/users" component={Users} />
+          <Route path="/feedback" component={Feedback} />
         </>
       )}
       <Route component={NotFound} />

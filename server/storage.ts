@@ -7,6 +7,7 @@ import {
   activities,
   receivables,
   receivablePayments,
+  feedback,
   type User,
   type UpsertUser,
   type Customer,
@@ -24,6 +25,8 @@ import {
   type InsertReceivable,
   type ReceivablePayment,
   type InsertReceivablePayment,
+  type Feedback,
+  type InsertFeedback,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, gte, lte, sql } from "drizzle-orm";
@@ -37,6 +40,8 @@ export interface IStorage {
   getAllUsers(): Promise<User[]>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createManualUser(user: InsertManualUser): Promise<User>;
+  updateManualUser(id: string, data: Partial<InsertManualUser>): Promise<User>;
+  deleteManualUser(id: string): Promise<void>;
 
   // Customer operations
   getCustomers(): Promise<Customer[]>;
@@ -92,6 +97,12 @@ export interface IStorage {
 
   // User profile operations
   updateUserProfile(userId: string, updates: any): Promise<void>;
+
+  // Feedback operations
+  getAllFeedback(): Promise<Feedback[]>;
+  getUserFeedback(userId: string): Promise<Feedback[]>;
+  createFeedback(feedback: InsertFeedback): Promise<Feedback>;
+  updateFeedbackStatus(id: string, status: string): Promise<Feedback>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -143,6 +154,39 @@ export class DatabaseStorage implements IStorage {
     });
 
     return user;
+  }
+
+  async updateManualUser(id: string, data: Partial<InsertManualUser>): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+
+    // Log activity
+    await this.createActivity({
+      type: 'user_updated',
+      description: `تم تحديث بيانات المستخدم: ${user.username}`,
+      relatedId: user.id,
+    });
+
+    return user;
+  }
+
+  async deleteManualUser(id: string): Promise<void> {
+    const user = await this.getUser(id);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    await db.delete(users).where(eq(users.id, id));
+
+    // Log activity
+    await this.createActivity({
+      type: 'user_deleted',
+      description: `تم حذف المستخدم: ${user.username}`,
+      relatedId: id,
+    });
   }
 
   // Customer operations
@@ -514,6 +558,55 @@ export class DatabaseStorage implements IStorage {
     // For this demo, we'll just acknowledge the update
     return Promise.resolve();
   }
+
+  // Feedback operations
+  async getAllFeedback(): Promise<Feedback[]> {
+    return await db
+      .select()
+      .from(feedback)
+      .orderBy(desc(feedback.createdAt));
+  }
+
+  async getUserFeedback(userId: string): Promise<Feedback[]> {
+    return await db
+      .select()
+      .from(feedback)
+      .where(eq(feedback.userId, userId))
+      .orderBy(desc(feedback.createdAt));
+  }
+
+  async createFeedback(feedbackData: InsertFeedback): Promise<Feedback> {
+    const [newFeedback] = await db
+      .insert(feedback)
+      .values(feedbackData)
+      .returning();
+
+    // Log activity
+    await this.createActivity({
+      type: 'feedback_created',
+      description: `تم إرسال ${feedbackData.type === 'complaint' ? 'شكوى' : 'اقتراح'}: ${feedbackData.subject}`,
+      relatedId: newFeedback.id,
+    });
+
+    return newFeedback;
+  }
+
+  async updateFeedbackStatus(id: string, status: string): Promise<Feedback> {
+    const [updatedFeedback] = await db
+      .update(feedback)
+      .set({ status })
+      .where(eq(feedback.id, id))
+      .returning();
+
+    // Log activity
+    await this.createActivity({
+      type: 'feedback_updated',
+      description: `تم تحديث حالة الملاحظة إلى: ${status}`,
+      relatedId: id,
+    });
+
+    return updatedFeedback;
+  }
 }
 
 // In-Memory storage for when database is unavailable
@@ -524,6 +617,7 @@ class MemoryStorage implements IStorage {
   private expenseEntries: ExpenseEntry[] = [];
   private employees: Employee[] = [];
   private activities: Activity[] = [];
+  private feedbackList: Feedback[] = [];
 
   constructor() {
     console.log("⚠️  Using in-memory storage - data will be lost on restart");
@@ -599,6 +693,45 @@ class MemoryStorage implements IStorage {
     });
     
     return newUser;
+  }
+
+  async updateManualUser(id: string, data: Partial<InsertManualUser>): Promise<User> {
+    const index = this.users.findIndex(u => u.id === id);
+    if (index < 0) {
+      throw new Error('User not found');
+    }
+    
+    this.users[index] = { 
+      ...this.users[index], 
+      ...data, 
+      updatedAt: new Date() 
+    };
+    
+    // Log activity
+    await this.createActivity({
+      type: 'user_updated',
+      description: `تم تحديث بيانات المستخدم: ${this.users[index].username}`,
+      relatedId: id,
+    });
+    
+    return this.users[index];
+  }
+
+  async deleteManualUser(id: string): Promise<void> {
+    const index = this.users.findIndex(u => u.id === id);
+    if (index < 0) {
+      throw new Error('User not found');
+    }
+    
+    const user = this.users[index];
+    this.users.splice(index, 1);
+    
+    // Log activity
+    await this.createActivity({
+      type: 'user_deleted',
+      description: `تم حذف المستخدم: ${user.username}`,
+      relatedId: id,
+    });
   }
 
   async getCustomers(): Promise<Customer[]> {
@@ -840,6 +973,55 @@ class MemoryStorage implements IStorage {
     if (index >= 0) {
       this.users[index] = { ...this.users[index], ...updates, updatedAt: new Date() };
     }
+  }
+
+  // Feedback operations
+  async getAllFeedback(): Promise<Feedback[]> {
+    return [...this.feedbackList].sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+  }
+
+  async getUserFeedback(userId: string): Promise<Feedback[]> {
+    return this.feedbackList
+      .filter(f => f.userId === userId)
+      .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+  }
+
+  async createFeedback(feedbackData: InsertFeedback): Promise<Feedback> {
+    const newFeedback: Feedback = {
+      ...feedbackData,
+      id: this.generateId(),
+      status: 'pending',
+      createdAt: new Date(),
+    } as Feedback;
+
+    this.feedbackList.push(newFeedback);
+
+    // Log activity
+    await this.createActivity({
+      type: 'feedback_created',
+      description: `تم إرسال ${feedbackData.type === 'complaint' ? 'شكوى' : 'اقتراح'}: ${feedbackData.subject}`,
+      relatedId: newFeedback.id,
+    });
+
+    return newFeedback;
+  }
+
+  async updateFeedbackStatus(id: string, status: string): Promise<Feedback> {
+    const index = this.feedbackList.findIndex(f => f.id === id);
+    if (index < 0) {
+      throw new Error('Feedback not found');
+    }
+
+    this.feedbackList[index] = { ...this.feedbackList[index], status };
+
+    // Log activity
+    await this.createActivity({
+      type: 'feedback_updated',
+      description: `تم تحديث حالة الملاحظة إلى: ${status}`,
+      relatedId: id,
+    });
+
+    return this.feedbackList[index];
   }
 }
 

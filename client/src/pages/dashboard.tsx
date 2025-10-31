@@ -16,7 +16,9 @@ import {
   AlertTriangle,
   Warehouse,
   Eye,
-  EyeOff
+  EyeOff,
+  UserCog,
+  MessageSquare
 } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -131,12 +133,29 @@ export default function Dashboard() {
       stats: ["إدارة خارجية", "dijital.menu"],
     },
     {
-      title: "إنشاء الحسابات",
-      description: "إنشاء حسابات مستخدمين بصلاحيات محددة",
-      icon: UserPlus,
+      title: "إدارة المستخدمين",
+      description: "صلاحيات متقدمة",
+      icon: UserCog,
       gradient: "purple",
-      link: "/user-management",
+      link: "/users",
       stats: ["إدارة المستخدمين", "صلاحيات متقدمة"],
+    },
+    {
+      title: "الشكاوى والاقتراحات",
+      description: "إرسال الشكاوى والاقتراحات للإدارة",
+      icon: MessageSquare,
+      gradient: "pink",
+      link: "/feedback",
+      stats: ["تواصل مع الإدارة", "إرسال ملاحظاتك"],
+    },
+    {
+      title: "تواصل مباشر - نظام الإدارة",
+      description: "الوصول إلى لوحة التحكم الرئيسية",
+      icon: ExternalLink,
+      gradient: "indigo",
+      link: "https://kpi-xqng.onrender.com/login",
+      external: true,
+      stats: ["نظام KPI", "لوحة التحكم"],
     },
     {
       title: "المستثمرين",
@@ -238,12 +257,12 @@ export default function Dashboard() {
         {/* Recent Activities */}
         <div>
           <h3 className="text-2xl font-bold mb-6" data-testid="text-recent-activities">النشاطات الأخيرة</h3>
-          <GlassCard className="p-6">
+          <GlassCard className="p-6" data-testid="card-recent-activities">
             <div className="space-y-4">
               {activitiesLoading ? (
-                <div className="text-center py-8">
+                <div className="text-center py-8" data-testid="loading-activities">
                   <div className="animate-spin w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full mx-auto"></div>
-                  <p className="mt-2 text-gray-400">جاري التحميل...</p>
+                  <p className="mt-2 text-gray-400" data-testid="text-loading-activities">جاري التحميل...</p>
                 </div>
               ) : activities?.length ? (
                 activities.map((activity: any, index: number) => (
@@ -263,7 +282,7 @@ export default function Dashboard() {
                         </p>
                       </div>
                     </div>
-                    <span className={`text-sm ${getActivityStatusColor(activity.type)}`}>
+                    <span className={`text-sm ${getActivityStatusColor(activity.type)}`} data-testid={`text-activity-status-${index}`}>
                       {getActivityStatus(activity.type)}
                     </span>
                   </div>
@@ -326,6 +345,7 @@ function ModuleCard({ module, index, hideNumbers }: { module: any; index: number
         href={module.link}
         target="_blank"
         rel="noopener noreferrer"
+        data-testid={`link-module-${index}`}
       >
         {content}
       </a>
@@ -333,7 +353,7 @@ function ModuleCard({ module, index, hideNumbers }: { module: any; index: number
   }
 
   return (
-    <Link href={module.link}>
+    <Link href={module.link} data-testid={`link-module-${index}`}>
       {content}
     </Link>
   );

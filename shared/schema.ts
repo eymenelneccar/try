@@ -121,6 +121,17 @@ export const activities = pgTable("activities", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Feedback table - الشكاوى والاقتراحات
+export const feedback = pgTable("feedback", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  type: varchar("type").notNull(), // complaint or suggestion
+  subject: text("subject").notNull(),
+  message: text("message").notNull(),
+  status: varchar("status").default('pending'), // pending, reviewed, resolved
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Create insert schemas
 export const insertCustomerSchema = createInsertSchema(customers).omit({
   id: true,
@@ -175,6 +186,11 @@ export const insertReceivablePaymentSchema = createInsertSchema(receivablePaymen
   createdAt: true,
 });
 
+export const insertFeedbackSchema = createInsertSchema(feedback).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Export types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -193,3 +209,5 @@ export type Receivable = typeof receivables.$inferSelect;
 export type InsertReceivable = z.infer<typeof insertReceivableSchema>;
 export type ReceivablePayment = typeof receivablePayments.$inferSelect;
 export type InsertReceivablePayment = z.infer<typeof insertReceivablePaymentSchema>;
+export type Feedback = typeof feedback.$inferSelect;
+export type InsertFeedback = z.infer<typeof insertFeedbackSchema>;
