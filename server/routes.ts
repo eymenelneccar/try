@@ -491,6 +491,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: newRemainingAmount === 0 ? 'paid' : 'partial',
       });
 
+      // Add income entry for the payment
+      await storage.createIncomeEntry({
+        type: 'deposit',
+        amount: String(paymentAmount),
+        description: description || `دفعة على مستحق - المتبقي ${newRemainingAmount} د.ع`,
+        customerId: receivable.customerId || null,
+        isDeposit: false,
+        totalAmount: null,
+        receiptUrl: null,
+      });
+
       // Log activity
       await storage.createActivity({
         type: 'payment_received',
