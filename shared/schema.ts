@@ -57,8 +57,34 @@ export const customers = pgTable("customers", {
 export const incomeEntries = pgTable("income_entries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   customerId: varchar("customer_id").references(() => customers.id),
-  type: varchar("type").notNull(), // prints, subscription
+  type: varchar("type").notNull(), // prints, subscription, deposit
   printType: text("print_type"), // only if type is prints
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  isDeposit: boolean("is_deposit").default(false), // هل هذا عربون؟
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }), // المبلغ الكامل (للعربون فقط)
+  receiptUrl: text("receipt_url"),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Receivables table - المستحقات المالية
+export const receivables = pgTable("receivables", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  customerId: varchar("customer_id").references(() => customers.id),
+  incomeEntryId: varchar("income_entry_id").references(() => incomeEntries.id), // العربون الأصلي
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(), // المبلغ الكامل
+  paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }).notNull(), // المبلغ المدفوع
+  remainingAmount: decimal("remaining_amount", { precision: 10, scale: 2 }).notNull(), // المبلغ المتبقي
+  status: varchar("status").notNull().default('pending'), // pending, partial, paid
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Receivable payments table - دفعات المستحقات
+export const receivablePayments = pgTable("receivable_payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  receivableId: varchar("receivable_id").references(() => receivables.id).notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   receiptUrl: text("receipt_url"),
   description: text("description"),
@@ -138,6 +164,17 @@ export const insertManualUserSchema = createInsertSchema(users).omit({
   role: z.enum(["viewer", "editor", "admin"]).default("viewer"),
 });
 
+export const insertReceivableSchema = createInsertSchema(receivables).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertReceivablePaymentSchema = createInsertSchema(receivablePayments).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Export types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -152,3 +189,7 @@ export type Employee = typeof employees.$inferSelect;
 export type InsertEmployee = z.infer<typeof insertEmployeeSchema>;
 export type Activity = typeof activities.$inferSelect;
 export type InsertActivity = z.infer<typeof insertActivitySchema>;
+export type Receivable = typeof receivables.$inferSelect;
+export type InsertReceivable = z.infer<typeof insertReceivableSchema>;
+export type ReceivablePayment = typeof receivablePayments.$inferSelect;
+export type InsertReceivablePayment = z.infer<typeof insertReceivablePaymentSchema>;

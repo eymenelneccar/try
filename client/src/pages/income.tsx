@@ -30,6 +30,8 @@ export default function Income() {
   const form = useForm({
     resolver: zodResolver(insertIncomeEntrySchema.extend({
       customerId: insertIncomeEntrySchema.shape.customerId.optional(),
+      totalAmount: insertIncomeEntrySchema.shape.totalAmount.optional(),
+      isDeposit: insertIncomeEntrySchema.shape.isDeposit.optional(),
     })),
     defaultValues: {
       type: "",
@@ -37,6 +39,8 @@ export default function Income() {
       amount: "",
       customerId: "",
       description: "",
+      isDeposit: false,
+      totalAmount: "",
     },
   });
 
@@ -229,6 +233,12 @@ export default function Income() {
     if (value !== "prints") {
       form.setValue("printType", "");
     }
+    if (value === "deposit") {
+      form.setValue("isDeposit", true);
+    } else {
+      form.setValue("isDeposit", false);
+      form.setValue("totalAmount", "");
+    }
   };
 
   return (
@@ -297,6 +307,7 @@ export default function Income() {
                           <SelectContent>
                             <SelectItem value="prints">مطبوعات</SelectItem>
                             <SelectItem value="subscription">اشتراك</SelectItem>
+                            <SelectItem value="deposit">عربون (دفعة مقدمة)</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -330,7 +341,7 @@ export default function Income() {
                     name="amount"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>المبلغ (دينار عراقي)</FormLabel>
+                        <FormLabel>{incomeType === "deposit" ? "المبلغ المدفوع (عربون) *" : "المبلغ (دينار عراقي)"}</FormLabel>
                         <FormControl>
                           <Input 
                             type="number"
@@ -344,6 +355,36 @@ export default function Income() {
                       </FormItem>
                     )}
                   />
+
+                  {incomeType === "deposit" && (
+                    <>
+                      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 text-sm text-yellow-200">
+                        ⚠️ يجب إدخال المبلغ الكامل أدناه
+                      </div>
+                      <FormField
+                        control={form.control}
+                        name="totalAmount"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>المبلغ الكامل (دينار عراقي) *</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number"
+                                placeholder="أدخل المبلغ الكامل المستحق" 
+                                className="glass-card border-white/20 focus:border-green-400"
+                                data-testid="input-total-amount"
+                                {...field} 
+                              />
+                            </FormControl>
+                            <p className="text-xs text-gray-400 mt-1">
+                              المبلغ الكامل يجب أن يكون أكبر من أو يساوي المبلغ المدفوع أعلاه
+                            </p>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </>
+                  )}
                   
                   <FormField
                     control={form.control}

@@ -227,12 +227,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         receiptUrl: req.file ? `/uploads/${req.file.filename}` : null
       });
       
+      // Validate deposit: totalAmount is REQUIRED if isDeposit
+      if (validatedData.isDeposit) {
+        if (!validatedData.totalAmount) {
+          return res.status(400).json({ message: "المبلغ الكامل مطلوب عند اختيار العربون" });
+        }
+        
+        const paidAmount = parseFloat(String(validatedData.amount));
+        const totalAmount = parseFloat(String(validatedData.totalAmount));
+        
+        if (totalAmount < paidAmount) {
+          return res.status(400).json({ message: "المبلغ الكامل يجب أن يكون أكبر من أو يساوي المبلغ المدفوع" });
+        }
+      }
+      
       const incomeEntry = await storage.createIncomeEntry(validatedData);
+      
+      // If it's a deposit, create a receivable entry
+      if (validatedData.isDeposit && validatedData.totalAmount) {
+        const paidAmount = parseFloat(String(validatedData.amount));
+        const totalAmount = parseFloat(String(validatedData.totalAmount));
+        const remainingAmount = totalAmount - paidAmount;
+        
+        await storage.createReceivable({
+          customerId: validatedData.customerId || null,
+          incomeEntryId: incomeEntry.id,
+          totalAmount: String(totalAmount),
+          paidAmount: String(paidAmount),
+          remainingAmount: String(remainingAmount),
+          status: remainingAmount === 0 ? 'paid' : 'partial',
+          description: validatedData.description || null,
+        });
+        
+        // Log activity for receivable
+        await storage.createActivity({
+          type: 'receivable_added',
+          description: `تم إنشاء مستحق جديد بقيمة ${totalAmount} د.ع - مدفوع ${paidAmount} د.ع - متبقي ${remainingAmount} د.ع`,
+          relatedId: incomeEntry.id,
+        });
+      }
       
       // Log activity
       await storage.createActivity({
         type: 'income_added',
-        description: `تم تسجيل إدخال ${validatedData.type === 'prints' ? 'مطبوعات' : 'اشتراك'} بقيمة ${validatedData.amount} د.ع`,
+        description: `تم تسجيل إدخال ${validatedData.type === 'prints' ? 'مطبوعات' : validatedData.type === 'deposit' ? 'عربون' : 'اشتراك'} بقيمة ${validatedData.amount} د.ع`,
         relatedId: incomeEntry.id,
       });
       
@@ -380,6 +418,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting expense entry:", error);
       res.status(500).json({ message: "فشل في حذف الإخراج" });
+    }
+  });
+
+  // Receivables routes
+  app.get('/api/receivables', isAuthenticated, async (req, res) => {
+    try {
+      const receivables = await storage.getReceivables();
+      res.json(receivables);
+    } catch (error) {
+      console.error("Error fetching receivables:", error);
+      res.status(500).json({ message: "فشل في جلب المستحقات" });
+    }
+  });
+
+  app.get('/api/receivables/:id', isAuthenticated, async (req, res) => {
+    try {
+      const receivable = await storage.getReceivable(req.params.id);
+      if (!receivable) {
+        return res.status(404).json({ message: "المستحق غير موجود" });
+      }
+      res.json(receivable);
+    } catch (error) {
+      console.error("Error fetching receivable:", error);
+      res.status(500).json({ message: "فشل في جلب المستحق" });
+    }
+  });
+
+  app.post('/api/receivables/:id/payments', isAuthenticated, async (req, res) => {
+    try {
+      const { amount, description } = req.body;
+      
+      if (!amount || parseFloat(amount) <= 0) {
+        return res.status(400).json({ message: "المبلغ يجب أن يكون أكبر من صفر" });
+      }
+
+      const receivable = await storage.getReceivable(req.params.id);
+      if (!receivable) {
+        return res.status(404).json({ message: "المستحق غير موجود" });
+      }
+
+      const paymentAmount = parseFloat(amount);
+      const remaining = parseFloat(String(receivable.remainingAmount));
+
+      if (paymentAmount > remaining) {
+        return res.status(400).json({ message: "المبلغ المدفوع أكبر من المبلغ المتبقي" });
+      }
+
+      // Create payment record
+      const payment = await storage.createReceivablePayment({
+        receivableId: req.params.id,
+        amount: String(paymentAmount),
+        description: description || null,
+        receiptUrl: null,
+      });
+
+      // Update receivable
+      const newPaidAmount = parseFloat(String(receivable.paidAmount)) + paymentAmount;
+      const newRemainingAmount = remaining - paymentAmount;
+      
+      await storage.updateReceivable(req.params.id, {
+        paidAmount: String(newPaidAmount),
+        remainingAmount: String(newRemainingAmount),
+        status: newRemainingAmount === 0 ? 'paid' : 'partial',
+      });
+
+      // Log activity
+      await storage.createActivity({
+        type: 'payment_received',
+        description: `تم دفع ${paymentAmount} د.ع على المستحق - المتبقي ${newRemainingAmount} د.ع`,
+        relatedId: req.params.id,
+      });
+
+      res.status(201).json(payment);
+    } catch (error) {
+      console.error("Error creating payment:", error);
+      res.status(400).json({ message: "فشل في تسجيل الدفعة" });
+    }
+  });
+
+  app.get('/api/receivables/:id/payments', isAuthenticated, async (req, res) => {
+    try {
+      const payments = await storage.getReceivablePayments(req.params.id);
+      res.json(payments);
+    } catch (error) {
+      console.error("Error fetching payments:", error);
+      res.status(500).json({ message: "فشل في جلب الدفعات" });
+    }
+  });
+
+  app.delete('/api/receivables/:id', isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteReceivable(req.params.id);
+      
+      // Log activity
+      await storage.createActivity({
+        type: 'receivable_deleted',
+        description: `تم حذف مستحق`,
+        relatedId: req.params.id,
+      });
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting receivable:", error);
+      res.status(500).json({ message: "فشل في حذف المستحق" });
     }
   });
 

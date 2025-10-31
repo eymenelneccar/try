@@ -82,6 +82,14 @@ export default function Dashboard() {
       stats: [`${stats?.monthlyIncome || 0} د.ع`, "هذا الشهر"],
     },
     {
+      title: "المستحقات",
+      description: "إدارة الديون والمستحقات المالية",
+      icon: Receipt,
+      gradient: "yellow",
+      link: "/receivables",
+      stats: ["تتبع الديون", "إدارة الدفعات"],
+    },
+    {
       title: "إدارة الإخراجات",
       description: "تسجيل المصاريف والنفقات مع الأسباب التفصيلية",
       icon: Receipt,

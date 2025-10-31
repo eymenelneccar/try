@@ -5,6 +5,8 @@ import {
   expenseEntries,
   employees,
   activities,
+  receivables,
+  receivablePayments,
   type User,
   type UpsertUser,
   type Customer,
@@ -18,6 +20,10 @@ import {
   type Activity,
   type InsertActivity,
   type InsertManualUser,
+  type Receivable,
+  type InsertReceivable,
+  type ReceivablePayment,
+  type InsertReceivablePayment,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, gte, lte, sql } from "drizzle-orm";
@@ -55,6 +61,14 @@ export interface IStorage {
   updateExpenseEntry(id: string, data: Partial<InsertExpenseEntry>): Promise<ExpenseEntry | null>;
   deleteExpenseEntry(id: string): Promise<void>;
   
+  // Receivable operations
+  getReceivables(): Promise<Receivable[]>;
+  getReceivable(id: string): Promise<Receivable | undefined>;
+  createReceivable(receivable: InsertReceivable): Promise<Receivable>;
+  updateReceivable(id: string, data: Partial<Receivable>): Promise<Receivable>;
+  deleteReceivable(id: string): Promise<void>;
+  createReceivablePayment(payment: InsertReceivablePayment): Promise<ReceivablePayment>;
+  getReceivablePayments(receivableId: string): Promise<ReceivablePayment[]>;
 
   // Employee operations
   getEmployees(): Promise<Employee[]>;
@@ -311,6 +325,62 @@ export class DatabaseStorage implements IStorage {
 
   async deleteExpenseEntry(id: string): Promise<void> {
     await db.delete(expenseEntries).where(eq(expenseEntries.id, id));
+  }
+
+  // Receivable operations
+  async getReceivables(): Promise<Receivable[]> {
+    return await db
+      .select()
+      .from(receivables)
+      .orderBy(desc(receivables.createdAt));
+  }
+
+  async getReceivable(id: string): Promise<Receivable | undefined> {
+    const [receivable] = await db
+      .select()
+      .from(receivables)
+      .where(eq(receivables.id, id));
+    return receivable;
+  }
+
+  async createReceivable(receivableData: InsertReceivable): Promise<Receivable> {
+    const [receivable] = await db
+      .insert(receivables)
+      .values(receivableData)
+      .returning();
+    return receivable;
+  }
+
+  async updateReceivable(id: string, data: Partial<Receivable>): Promise<Receivable> {
+    const [receivable] = await db
+      .update(receivables)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(receivables.id, id))
+      .returning();
+    return receivable;
+  }
+
+  async deleteReceivable(id: string): Promise<void> {
+    // Delete all related payments first
+    await db.delete(receivablePayments).where(eq(receivablePayments.receivableId, id));
+    // Then delete the receivable
+    await db.delete(receivables).where(eq(receivables.id, id));
+  }
+
+  async createReceivablePayment(paymentData: InsertReceivablePayment): Promise<ReceivablePayment> {
+    const [payment] = await db
+      .insert(receivablePayments)
+      .values(paymentData)
+      .returning();
+    return payment;
+  }
+
+  async getReceivablePayments(receivableId: string): Promise<ReceivablePayment[]> {
+    return await db
+      .select()
+      .from(receivablePayments)
+      .where(eq(receivablePayments.receivableId, receivableId))
+      .orderBy(desc(receivablePayments.createdAt));
   }
 
   // Employee operations
